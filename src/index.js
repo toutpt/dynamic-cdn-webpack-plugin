@@ -1,5 +1,5 @@
 import readPkgUp from 'read-pkg-up';
-import HtmlWebpackIncludeAssetsPlugin from 'html-webpack-include-assets-plugin';
+import TagsPlugin from 'html-webpack-tags-plugin';
 import ExternalModule from 'webpack/lib/ExternalModule';
 import resolvePkg from 'resolve-pkg';
 
@@ -191,26 +191,18 @@ export default class DynamicCdnWebpackPlugin {
     }
 
     applyHtmlWebpackPlugin(compiler) {
-        const includeAssetsPlugin = new HtmlWebpackIncludeAssetsPlugin({
-            assets: [],
-            publicPath: '',
-            append: false
-        });
-
-        includeAssetsPlugin.apply(compiler);
-
         compiler.hooks.afterCompile.tapAsync(pluginName, (compilation, cb) => {
-            const assets = Object.values(this.modulesFromCdn).map(
-                moduleFromCdn => moduleFromCdn.url
-            );
+            const tags = Object.values(this.modulesFromCdn).map(moduleFromCdn => moduleFromCdn.url);
 
             // HACK: Calling the constructor directly is not recomended
             //       But that's the only secure way to edit `assets` afterhand
-            includeAssetsPlugin.constructor({
-                assets,
+            const includeAssetsPlugin = new TagsPlugin({
+                scripts: tags.filter(t => t.endsWith('js')),
+                links: tags.filter(t => t.endsWith('css')),
                 publicPath: '',
                 append: false
             });
+            includeAssetsPlugin.apply(compiler);
 
             cb();
         });
