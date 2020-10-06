@@ -1,5 +1,4 @@
 import readPkgUp from 'read-pkg-up';
-import HtmlWebpackIncludeAssetsPlugin from 'html-webpack-include-assets-plugin';
 import ExternalModule from 'webpack/lib/ExternalModule';
 import resolvePkg from 'resolve-pkg';
 import {RawSource} from 'webpack-sources';
@@ -49,7 +48,7 @@ function getPackageRootPath(name) {
     }
 
     const index = main.indexOf(name);
-    return main.substring(0, index + name.length);
+    return main.slice(0, index + name.length);
 }
 
 export default class DynamicCdnWebpackPlugin {
@@ -140,6 +139,11 @@ export default class DynamicCdnWebpackPlugin {
 
         const moduleName = modulePath.match(moduleRegex)[1];
         const cwd = resolvePkg(moduleName, {cwd: contextPath});
+        if (!cwd) {
+            // The module is not installed
+            return false;
+        }
+
         const {
             packageJson: {version, peerDependencies, dependencies}
         } = readPkgUp.sync({cwd});
@@ -228,10 +232,13 @@ export default class DynamicCdnWebpackPlugin {
 
     applyWebpackCore(compiler) {
         compiler.hooks.afterCompile.tapAsync(pluginName, (compilation, cb) => {
-            const depName = `${compiler.options.output.filename}.dependencies.json`;
-            compilation.assets[depName] = new RawSource(
-                JSON.stringify(getDeps(this.modulesFromCdn))
-            );
+            if (!compiler.options.output.filename.includes('[')) {
+                const depName = `${compiler.options.output.filename}.dependencies.json`;
+                compilation.assets[depName] = new RawSource(
+                    JSON.stringify(getDeps(this.modulesFromCdn))
+                );
+            }
+
             for (const [name, cdnConfig] of Object.entries(this.modulesFromCdn)) {
                 compilation.addChunkInGroup(name);
                 const chunk = compilation.addChunk(name);
@@ -243,28 +250,29 @@ export default class DynamicCdnWebpackPlugin {
     }
 
     applyHtmlWebpackPlugin(compiler) {
-        const includeAssetsPlugin = new HtmlWebpackIncludeAssetsPlugin({
-            assets: [],
-            publicPath: '',
-            append: false
-        });
+        compiler.hooks.compilation.tap(pluginName, compilation => {
+            // Static Plugin interface |compilation |HOOK NAME | register listener
+            const alterAssets = (data, cb) => {
+                const cdnAssets = Object.values(this.modulesFromCdn).map(
+                    moduleFromCdn => moduleFromCdn.url
+                );
+                data.assets.js = [].concat(cdnAssets, data.assets.js);
+                // Tell webpack to move on
+                if (cb) {
+                    cb(null, data);
+                }
 
-        includeAssetsPlugin.apply(compiler);
+                return data;
+            };
 
-        compiler.hooks.afterCompile.tapAsync(pluginName, (compilation, cb) => {
-            const assets = Object.values(this.modulesFromCdn).map(
-                moduleFromCdn => moduleFromCdn.url
-            );
-
-            // HACK: Calling the constructor directly is not recomended
-            //       But that's the only secure way to edit `assets` afterhand
-            includeAssetsPlugin.constructor({
-                assets,
-                publicPath: '',
-                append: false
-            });
-
-            cb();
+            if (HtmlWebpackPlugin.getHooks) {
+                HtmlWebpackPlugin.getHooks(compilation).beforeAssetTagGeneration.tapAsync(
+                    pluginName,
+                    alterAssets
+                );
+            } else {
+                compilation.plugin('html-webpack-plugin-before-html-processing', alterAssets);
+            }
         });
     }
 }
