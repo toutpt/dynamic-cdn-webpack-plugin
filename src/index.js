@@ -33,7 +33,8 @@ function getDeps(cdnConfig) {
             name: cdnConfig[key].name,
             var: cdnConfig[key].var,
             version: cdnConfig[key].version,
-            path: cdnConfig[key].path
+            path: cdnConfig[key].path,
+            stylePath: cdnConfig[key].stylePath
         };
         return acc;
     }, {});
@@ -256,7 +257,12 @@ export default class DynamicCdnWebpackPlugin {
                 const cdnAssets = Object.values(this.modulesFromCdn).map(
                     moduleFromCdn => moduleFromCdn.url
                 );
+                const cdnCssAssets = Object.values(this.modulesFromCdn)
+                    .map(moduleFromCdn => moduleFromCdn.styleUrl)
+                    .filter(Boolean);
                 data.assets.js = [].concat(cdnAssets, data.assets.js);
+                data.assets.css = [].concat(cdnCssAssets, data.assets.css);
+
                 // Tell webpack to move on
                 if (cb) {
                     cb(null, data);
