@@ -181,19 +181,19 @@ export default class DynamicCdnWebpackPlugin {
         const depPath = `${getPackageRootPath(cdnConfig.name)}${cdnConfig.path}.dependencies.json`;
         if (fs.existsSync(depPath)) {
             const manifest = require(depPath);
-            await Promise.all(
-                Object.keys(manifest).map(dependencyName => {
-                    return this.addModule(contextPath, dependencyName, {env});
-                })
-            );
+            for (const dependencyName of Object.keys(manifest)) {
+                await this.addModule(contextPath, dependencyName, {
+                    env
+                });
+            }
         } else {
             if (dependencies) {
                 // We build our lib using module-to-cdn, don t care of the results
-                await Promise.all(
-                    Object.keys(dependencies).map(dependencyName => {
-                        return this.addModule(contextPath, dependencyName, {env});
-                    })
-                );
+                for (const dependencyName of Object.keys(dependencies)) {
+                    await this.addModule(contextPath, dependencyName, {
+                        env
+                    });
+                }
             }
 
             if (peerDependencies) {
