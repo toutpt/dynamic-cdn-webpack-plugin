@@ -81,6 +81,7 @@
     "rules": {
       "eqeqeq": "off",
       "no-eq-null": "off",
+      "no-await-in-loop": "off",
       "unicorn/no-reduce": "off",
       "eslint-comments/no-unused-disable": "off",
       "import/no-extraneous-dependencies": "off",
