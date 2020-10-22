@@ -276,8 +276,18 @@ export default class DynamicCdnWebpackPlugin {
                     pluginName,
                     alterAssets
                 );
+            } else if (
+                compilation.hooks &&
+                compilation.hooks.htmlWebpackPluginBeforeHtmlGeneration
+            ) {
+                compilation.hooks.htmlWebpackPluginBeforeHtmlGeneration.tapAsync(
+                    pluginName,
+                    alterAssets
+                );
             } else {
-                compilation.plugin('html-webpack-plugin-before-html-processing', alterAssets);
+                throw new Error(
+                    '@talend/dynamic-cdn-webpack-plugin support only webpack-html-plugin 3.2 and 4.x'
+                );
             }
         });
     }
