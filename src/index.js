@@ -123,7 +123,7 @@ export default class DynamicCdnWebpackPlugin {
                 if (varName === false) {
                     factory(data, cb);
                 } else if (varName == null) {
-                    cb(null);
+                    cb(null, new ExternalModule('{}', 'var', modulePath));
                 } else {
                     cb(null, new ExternalModule(varName, 'var', modulePath));
                 }
